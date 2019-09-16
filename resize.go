@@ -6,7 +6,7 @@ import (
     "image/png"
     "image/color"
     "os"
-    "math"
+    //"math"
 )
 
 func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error) {
@@ -58,7 +58,7 @@ func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error)
 
         }
     }
-    fmt.Println(width+4, height+4, len(r[0]), len(r))
+    //fmt.Println(width+4, height+4, len(r[0]), len(r))
     for y := 0; y < len(r); y++{
         for x := 0; x < len(r[0]); x++{
         ///
@@ -73,26 +73,31 @@ func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error)
 }
 
 func cubicInterpolate(line []uint32)uint32{
-    var mid float64 = 0.5
+    var center float64 = 0.5
     //var right uint32 = 3*(line[1] + line[2])/4
     //var left uint32 = (line[1] + line[2])/4
-    /*
-    newval := center*(line[2] - line[0] +center*(2.0*line[0] - 5.0*line[1] + 4.0*line[2] - line[3] + center*(3.0*(line[1] - line[2]) + line[3] - line[0])))
-    newval = uint32(line[1] + newval/2)
-    */
-    //  f(x)/2 = ax^3 + bx^2 + cx +d 
+      //  f(x)/2 = ax^3 + bx^2 + cx +d 
+
     if line == nil {
         return 0
-    }
-    a := -line[0] + 3*line[1] - 3*line[2] + line[3]
-    b := 2*line[0] - 5*line[1] + 4*line[2] - line[3]
-    c := -line[0] + line[2]
-    d := 2*line[1]
-    f_mid :=uint32((float64(a)*(math.Pow(mid, 3)) + float64(b)*(math.Pow(mid, 2)) + float64(c)*mid + float64(d))/2)
+    }  
+    newval := center*(float64(line[2]) - float64(line[0]) +center*(2*float64(line[0]) - 5*float64(line[1]) + 4*float64(line[2]) - float64(line[3]) + center*(3*(float64(line[1]) - float64(line[2])) + float64(line[3]) - float64(line[0]))))
+    newval = uint32(line[1] + newval/2)
+    
+
+/*	
+    a := float64((-line[0] + 3*line[1] - 3*line[2] + line[3])/2)
+    b := float64((2*line[0] - 5*line[1] + 4*line[2] - line[3])/2)
+    c := float64((-line[0] + line[2])/2)
+    d := line[1]
+    f_mid :=uint32(((a)*(math.Pow(mid, 3)) + (b)*(math.Pow(mid, 2)) + (c)*mid + float64(d))/2)
+	//fmt.Println(f_mid)
+	
     //f_right :=uint32((a*(right^3) + b*(right^2) + c^right + d)/2) 
     //f_left :=uint32((a*(left^3) + b*(left^2) + c^left + d)/2) 
     ///new_points := []uint32{f_left, f_mid, f_right}
-    return f_mid
+    return f_mid*/
+	return uint32(newval)
 }
 
 func biCubicInterpolate(line [][]uint32)(uint32){
@@ -152,7 +157,7 @@ func paintSection(ch chan map[MapKey]Fullpixel, width, height int, r, g, b, a []
     imgRGBA := image.NewRGBA(image.Rectangle{topleft, bottomright})
 
 
-  
+	
     for y := 0; y < height+4; y++{
         for x := 0; x < width+4; x++{
             col :=  color.RGBA{uint8(r[y][x]), uint8(g[y][x]), uint8(b[y][x]), uint8(a[y][x])}
@@ -163,22 +168,23 @@ func paintSection(ch chan map[MapKey]Fullpixel, width, height int, r, g, b, a []
     f, _ := os.Create("output.png")
     png.Encode(f, imgRGBA)
     */
-    curr_x := 1
-    curr_y := 1
+    curr_x := 0
+    curr_y := 0
     for{
         pixelmap := <- ch
         p := pixelmap[MapKey{x:curr_x, y:curr_y}]
         if p.colors_added == 4 {
             //print the pixel on the screen
             col :=  color.RGBA{uint8(p.colortype[0]), uint8(p.colortype[1]), uint8(p.colortype[2]), uint8(p.colortype[3])}
-            imgRGBA.Set(2*curr_x+5, 2*curr_y+5, col)
-            curr_x +=2 
+            //imgRGBA.Set(2*curr_x+5, 2*curr_y+5, col) for starting at 1 and incrementing by 2 each time
+			imgRGBA.Set(2*curr_x+1, 2*curr_y+1, col)
+            curr_x +=1
             //advance to next column or row
-            if curr_x == width -3 {
+            if curr_x == width -1{
                 curr_x = 1
-                curr_y += 2
+                curr_y += 1
             }
-            if curr_y == height -4{
+            if curr_y == height -1{
                 break
             }
         }
