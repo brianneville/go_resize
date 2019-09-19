@@ -6,7 +6,6 @@ import (
     "image/png"
     "image/color"
     "os"
-    "math"
 )
 
 func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error) {
@@ -24,15 +23,7 @@ func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error)
     }
     bounds := img.Bounds()
     width, height = bounds.Max.X, bounds.Max.Y
-    /*
-    ///
-    topleft := image.Point{0, 0}
-    bottomright := image.Point{2*width, 2*height}
-    imgRGBA := image.NewRGBA(image.Rectangle{topleft, bottomright})
-    ///
-    */
 
-    //r, g, b, a = [][]uint32{}, [][]uint32{}, [][]uint32{}, [][]uint32{}
     r = make([][]uint32, height+4)
     g = make([][]uint32, height+4)
     b = make([][]uint32, height+4)
@@ -60,53 +51,17 @@ func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error)
 
         }
     }
-    //fmt.Println(width+4, height+4, len(r[0]), len(r))
-    /*
-    for y := 0; y < len(r); y++{
-        for x := 0; x < len(r[0]); x++{
-        ///
-        col :=  color.RGBA{uint8(r[y][x]), uint8(g[y][x]), uint8(b[y][x] ), uint8(a[y][x])}
-        imgRGBA.Set(x, y, col)
-        ///
-        }
-    }
-    f, _ := os.Create("output_real.png")
-    png.Encode(f, imgRGBA)
-    */
     return r, g, b, a, width, height, err
 }
 
-func cubicInterpolate(line []uint32)uint32{
-    var mid float64 = 0
-    //var right uint32 = 3*(line[1] + line[2])/4
-    //var left uint32 = (line[1] + line[2])/4
-      //  f(x)/2 = ax^3 + bx^2 + cx +d 
-    a := float64((-line[0] + 3*line[1] - 3*line[2] + line[3])/2)
-    b := float64((2*line[0] - 5*line[1] + 4*line[2] - line[3])/2)
-    c := float64((-line[0] + line[2])/2)
-    d := line[1]
-    f_mid :=uint32((a)*(math.Pow(mid, 3)) + (b)*(math.Pow(mid, 2)) + (c)*mid + float64(d))
-	//fmt.Println(f_mid)
-	
-    //f_right :=uint32((a*(right^3) + b*(right^2) + c^right + d)/2) 
-    //f_left :=uint32((a*(left^3) + b*(left^2) + c^left + d)/2) 
-    ///new_points := []uint32{f_left, f_mid, f_right}
-    return f_mid
-	//return uint32(newval)
-}
-
-func biCubicInterpolate(line [][]uint32)(uint32,uint32, uint32, uint32, uint32){
-    //takes in a region of [4][4]uint32 and returns a region of [3][3]uint32 values which have been interpolated from the centre of the image
-    col := make([]uint32, 4, 4)
-    //row := make([]uint32, 2, 2)
-    for i := 0; i < 4; i++{
-        col[i] = cubicInterpolate(line[:][i])
+func two_dimInterpolate(line [][]uint32)(uint32,uint32, uint32, uint32, uint32){
+    col := make([]uint32, 2, 2)
+    for i := 0; i < 2; i++{
+        col[i] = line[0][i]
     }
-    center_point := cubicInterpolate(col)
+    center_point := col[0]
 
-        //returns the uint32 value for the bicubic interpolation
-        //return center, right, left, down, up
-    return center_point, col[1], col[2], cubicInterpolate(line[1][:]), cubicInterpolate(line[2][:]) 
+    return center_point, col[0], col[1], line[0][0], line[1][0] 
 }
 
 func interpolateChannel(img [][]uint32, width, height int, id uint32, ch chan map[MapKey]Fullpixel){
@@ -119,12 +74,10 @@ func interpolateChannel(img [][]uint32, width, height int, id uint32, ch chan ma
     for y:= 0; y < height; y++ {
         for x := 0; x < width; x++{
             line := [][]uint32{
-                {img[y][x], img[y][x+1],img[y][x+2], img[y][x+3] },
-                {img[y+1][x], img[y+1][x+1],img[y+1][x+2], img[y+1][x+3] },
-                {img[y+2][x], img[y+2][x+1],img[y+2][x+2], img[y+2][x+3] },
-                {img[y+3][x], img[y+3][x+1],img[y+3][x+2], img[y+3][x+3] },
+                {img[y+1][x+1],img[y+1][x+2] },
+                {img[y+2][x+1],img[y+2][x+2]},
             }
-            center, right, left, down, up := biCubicInterpolate(line)
+            center, right, left, down, up := two_dimInterpolate(line)
             pixelmap := <- ch
             p := pixelmap[MapKey{x:x, y:y}]
             if p == blank{
@@ -148,12 +101,12 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
     bottomright := image.Point{2*width, 2*height}
     imgRGBA := image.NewRGBA(image.Rectangle{topleft, bottomright})
 
-
-
     for y := 0; y < height+4; y++{
         for x := 0; x < width+4; x++{
             col :=  color.RGBA{uint8(r[y][x]), uint8(g[y][x]), uint8(b[y][x]), uint8(a[y][x])}
             imgRGBA.Set(2*x, 2*y-2, col)
+            imgRGBA.Set(2*x-1, 2*y-2, col)
+
         }
     }
 
@@ -164,20 +117,21 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
         p := pixelmap[MapKey{x:curr_x, y:curr_y}]
         if p.colors_added == 4 {
             //print the pixel on the screen
-            //fmt.Println("addded at", 2*curr_x-1, 2*curr_y-1, "with p = ", p)
             col :=  color.RGBA{uint8(p.pixel_center[0]), uint8(p.pixel_center[1]), uint8(p.pixel_center[2]), uint8(p.pixel_center[3])}
-            //imgRGBA.Set(2*curr_x+5, 2*curr_y+5, col) for starting at 1 and incrementing by 2 each time
-            //imgRGBA.Set(2*curr_x+3, 2*curr_y+5, col)
             imgRGBA.Set(2*curr_x+2, 2*curr_y+1, col)
-            col =  color.RGBA{uint8(p.pixel_right[0]), uint8(p.pixel_right[1]), uint8(p.pixel_right[2]), uint8(p.pixel_right[3])}
+            //col :=  color.RGBA{uint8(p.pixel_center[0]), uint8(p.pixel_center[1]), uint8(p.pixel_center[2]), uint8(p.pixel_center[3])}
             imgRGBA.Set(2*curr_x+1, 2*curr_y+1, col)
+            imgRGBA.Set(2*curr_x+3, 2*curr_y+1, col)       
+           /* 
+            col =  color.RGBA{uint8(p.pixel_right[0]), uint8(p.pixel_right[1]), uint8(p.pixel_right[2]), uint8(p.pixel_right[3])}
+            imgRGBA.Set(2*curr_x-1, 2*curr_y+1, col)
             col =  color.RGBA{uint8(p.pixel_left[0]), uint8(p.pixel_left[1]), uint8(p.pixel_left[2]), uint8(p.pixel_left[3])}
-            imgRGBA.Set(2*curr_x, 2*curr_y+1, col)
+            imgRGBA.Set(2*curr_x-2, 2*curr_y+1, col)
             col =  color.RGBA{uint8(p.pixel_up[0]), uint8(p.pixel_left[1]), uint8(p.pixel_left[2]), uint8(p.pixel_left[3])}
-            imgRGBA.Set(2*curr_x+1, 2*curr_y+2, col)
+            imgRGBA.Set(2*curr_x-1, 2*curr_y+2, col)
             col =  color.RGBA{uint8(p.pixel_down[0]), uint8(p.pixel_down[1]), uint8(p.pixel_down[2]), uint8(p.pixel_down[3])}
-            imgRGBA.Set(2*curr_x+1, 2*curr_y, col)
-            
+            imgRGBA.Set(2*curr_x-1, 2*curr_y, col)
+            */
             p.colors_added++;
             pixelmap[MapKey{x:curr_x, y:curr_y}] = p
             curr_x += 1
@@ -193,18 +147,19 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
 
         ch <- pixelmap
     }
+
     scaled_name := fmt.Sprintf("scaled_%s", name)
     f, _ := os.Create(scaled_name)
     png.Encode(f, imgRGBA)
 }
 
-func scaleOrDeepFry(name string){
+func resize(name string){
     r, g, b, a, width, height, err := readImg(name)
     if err != nil {
         fmt.Println(err)
         return
     }
-    ch := make(chan map[MapKey]Fullpixel, 1)
+    ch := make(chan map[MapKey]Fullpixel, 1) 
     ch <- map[MapKey]Fullpixel{}
     go interpolateChannel(r, width, height, 0, ch)
     go interpolateChannel(g, width, height, 1, ch)
@@ -230,11 +185,12 @@ type Fullpixel struct{
 
 
 func main(){
-    scaleOrDeepFry("base.png")
-    scaleOrDeepFry("test_resizing.png")
-    scaleOrDeepFry("small_test.png")
-	
-
+    /*
+    resize("base.png")
+    resize("test_resizing.png")
+    resize("small_test.png")
+	resize("flowers.png")
+    resize("rabbits.png")
+    */
+    resize("test_resizing.png")
 }
-
-//    "terminal.integrated.shell.windows": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
