@@ -23,15 +23,7 @@ func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error)
     }
     bounds := img.Bounds()
     width, height = bounds.Max.X, bounds.Max.Y
-    /*
-    ///
-    topleft := image.Point{0, 0}
-    bottomright := image.Point{2*width, 2*height}
-    imgRGBA := image.NewRGBA(image.Rectangle{topleft, bottomright})
-    ///
-    */
 
-    //r, g, b, a = [][]uint32{}, [][]uint32{}, [][]uint32{}, [][]uint32{}
     r = make([][]uint32, height+4)
     g = make([][]uint32, height+4)
     b = make([][]uint32, height+4)
@@ -59,19 +51,6 @@ func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error)
 
         }
     }
-    //fmt.Println(width+4, height+4, len(r[0]), len(r))
-    /*
-    for y := 0; y < len(r); y++{
-        for x := 0; x < len(r[0]); x++{
-        ///
-        col :=  color.RGBA{uint8(r[y][x]), uint8(g[y][x]), uint8(b[y][x] ), uint8(a[y][x])}
-        imgRGBA.Set(x, y, col)
-        ///
-        }
-    }
-    f, _ := os.Create("output_real.png")
-    png.Encode(f, imgRGBA)
-    */
     return r, g, b, a, width, height, err
 }
 
@@ -178,7 +157,7 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
             imgRGBA.Set(2*curr_x+1, 2*curr_y, col)
             
             p.colors_added++;
-            pixelmap[MapKey{x:int(curr_x/2), y:int(curr_y/2)}] = p
+            pixelmap[MapKey{x:curr_x, y:curr_y}] = p
             curr_x += 2
             //advance to next column or row
             if curr_x >= width -1{
@@ -189,12 +168,39 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
                 break
             }
         }
-
         ch <- pixelmap
     }
     scaled_name := fmt.Sprintf("scaled_%s", name)
     f, _ := os.Create(scaled_name)
     png.Encode(f, imgRGBA)
+    
+    image.RegisterFormat("png", "png", png.Decode, png.DecodeConfig)
+    file, err := os.Open(scaled_name)
+    img, _, err := image.Decode(file)
+    imgNEW := image.NewRGBA(image.Rectangle{topleft, bottomright})
+    if err != nil{
+        fmt.Println(err)
+        return
+        }
+    var col [4]uint32
+    for y := 0; y < height; y++{
+        for x:= 0; x <width;x++{
+            if y % 4 ==0{
+                y ++
+            }
+            if x % 4 == 0{
+                x ++
+            }else{
+                col[0], col[1],col[2], col[3]= img.At(y, x).RGBA()
+                //co := color.RGBA(uint8(col[0]), uint8(col[1]), uint8(col[2]), uint8(col[3])
+                imgNEW.Set(y, x, color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), uint8(col[3])})
+            }
+        }
+    }
+    scaled_name_n := fmt.Sprintf("fixed_scaled_%s", name)
+    f, _ = os.Create(scaled_name_n)
+    png.Encode(f, imgNEW)
+
 }
 
 func scaleOrDeepFry(name string){
