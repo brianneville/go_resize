@@ -43,25 +43,23 @@ func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error)
     for y := 0; y < height; y++ {
         for x := 0; x < width; x++ {
             nr, ng, nb, na := img.At(x, y).RGBA()
-
             r[y+1][x+1] = nr
             g[y+1][x+1] = ng
             b[y+1][x+1] = nb
             a[y+1][x+1] = na
-
         }
     }
     return r, g, b, a, width, height, err
 }
 
-func two_dimInterpolate(line [][]uint32)(uint32,uint32, uint32, uint32, uint32){
+func two_dimInterpolate(line [][]uint32)(uint32){
     col := make([]uint32, 2, 2)
     for i := 0; i < 2; i++{
         col[i] = line[0][i]
     }
     center_point := col[0]
 
-    return center_point, col[0], col[1], line[0][0], line[1][0] 
+    return center_point
 }
 
 func interpolateChannel(img [][]uint32, width, height int, id uint32, ch chan map[MapKey]Fullpixel){
@@ -77,21 +75,17 @@ func interpolateChannel(img [][]uint32, width, height int, id uint32, ch chan ma
                 {img[y+1][x+1],img[y+1][x+2] },
                 {img[y+2][x+1],img[y+2][x+2]},
             }
-            center, right, left, down, up := two_dimInterpolate(line)
+            center := two_dimInterpolate(line)
             pixelmap := <- ch
             p := pixelmap[MapKey{x:x, y:y}]
             if p == blank{
                 p= Fullpixel{}
             }
             p.pixel_center[id] = center
-            p.pixel_right[id] = right
-            p.pixel_left[id] = left
-            p.pixel_down[id] = down
-            p.pixel_up[id] = up
             p.colors_added ++
             pixelmap[MapKey{x:x, y:y}] = p
             ch <- pixelmap
-        }
+        } 
     }
     
 }
@@ -119,19 +113,9 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
             //print the pixel on the screen
             col :=  color.RGBA{uint8(p.pixel_center[0]), uint8(p.pixel_center[1]), uint8(p.pixel_center[2]), uint8(p.pixel_center[3])}
             imgRGBA.Set(2*curr_x+2, 2*curr_y+1, col)
-            //col :=  color.RGBA{uint8(p.pixel_center[0]), uint8(p.pixel_center[1]), uint8(p.pixel_center[2]), uint8(p.pixel_center[3])}
             imgRGBA.Set(2*curr_x+1, 2*curr_y+1, col)
             imgRGBA.Set(2*curr_x+3, 2*curr_y+1, col)       
-           /* 
-            col =  color.RGBA{uint8(p.pixel_right[0]), uint8(p.pixel_right[1]), uint8(p.pixel_right[2]), uint8(p.pixel_right[3])}
-            imgRGBA.Set(2*curr_x-1, 2*curr_y+1, col)
-            col =  color.RGBA{uint8(p.pixel_left[0]), uint8(p.pixel_left[1]), uint8(p.pixel_left[2]), uint8(p.pixel_left[3])}
-            imgRGBA.Set(2*curr_x-2, 2*curr_y+1, col)
-            col =  color.RGBA{uint8(p.pixel_up[0]), uint8(p.pixel_left[1]), uint8(p.pixel_left[2]), uint8(p.pixel_left[3])}
-            imgRGBA.Set(2*curr_x-1, 2*curr_y+2, col)
-            col =  color.RGBA{uint8(p.pixel_down[0]), uint8(p.pixel_down[1]), uint8(p.pixel_down[2]), uint8(p.pixel_down[3])}
-            imgRGBA.Set(2*curr_x-1, 2*curr_y, col)
-            */
+
             p.colors_added++;
             pixelmap[MapKey{x:curr_x, y:curr_y}] = p
             curr_x += 1
@@ -176,10 +160,6 @@ type MapKey struct{
 
 type Fullpixel struct{
     pixel_center [4]uint32
-    pixel_up [4]uint32
-    pixel_down [4]uint32
-    pixel_right [4]uint32
-    pixel_left  [4]uint32
     colors_added uint32
 }
 
@@ -192,5 +172,5 @@ func main(){
 	resize("flowers.png")
     resize("rabbits.png")
     */
-    resize("test_resizing.png")
+    resize("reylo.png")
 }
