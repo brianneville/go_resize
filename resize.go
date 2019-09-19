@@ -6,7 +6,6 @@ import (
     "image/png"
     "image/color"
     "os"
-    "math"
 )
 
 func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error) {
@@ -77,15 +76,15 @@ func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error)
 }
 
 func cubicInterpolate(line []uint32)uint32{
-    var mid float64 = 0
+    var mid uint32 = 0
     //var right uint32 = 3*(line[1] + line[2])/4
     //var left uint32 = (line[1] + line[2])/4
       //  f(x)/2 = ax^3 + bx^2 + cx +d 
-    a := float64((-line[0] + 3*line[1] - 3*line[2] + line[3])/2)
-    b := float64((2*line[0] - 5*line[1] + 4*line[2] - line[3])/2)
-    c := float64((-line[0] + line[2])/2)
+    a := uint32((-line[0] + 3*line[1] - 3*line[2] + line[3])/2)
+    b := uint32((2*line[0] - 5*line[1] + 4*line[2] - line[3])/2)
+    c := uint32((-line[0] + line[2])/2)
     d := line[1]
-    f_mid :=uint32((a)*(math.Pow(mid, 3)) + (b)*(math.Pow(mid, 2)) + (c)*mid + float64(d))
+    f_mid :=uint32((a)*(mid*mid*mid) + (b)*(mid*mid) + (c)*mid + uint32(d))
 	//fmt.Println(f_mid)
 	
     //f_right :=uint32((a*(right^3) + b*(right^2) + c^right + d)/2) 
@@ -149,7 +148,6 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
     imgRGBA := image.NewRGBA(image.Rectangle{topleft, bottomright})
 
 
-
     for y := 0; y < height+4; y++{
         for x := 0; x < width+4; x++{
             col :=  color.RGBA{uint8(r[y][x]), uint8(g[y][x]), uint8(b[y][x]), uint8(a[y][x])}
@@ -169,6 +167,7 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
             //imgRGBA.Set(2*curr_x+5, 2*curr_y+5, col) for starting at 1 and incrementing by 2 each time
             //imgRGBA.Set(2*curr_x+3, 2*curr_y+5, col)
             imgRGBA.Set(2*curr_x+2, 2*curr_y+1, col)
+            
             col =  color.RGBA{uint8(p.pixel_right[0]), uint8(p.pixel_right[1]), uint8(p.pixel_right[2]), uint8(p.pixel_right[3])}
             imgRGBA.Set(2*curr_x+1, 2*curr_y+1, col)
             col =  color.RGBA{uint8(p.pixel_left[0]), uint8(p.pixel_left[1]), uint8(p.pixel_left[2]), uint8(p.pixel_left[3])}
@@ -179,12 +178,12 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
             imgRGBA.Set(2*curr_x+1, 2*curr_y, col)
             
             p.colors_added++;
-            pixelmap[MapKey{x:curr_x, y:curr_y}] = p
-            curr_x += 1
+            pixelmap[MapKey{x:int(curr_x/2), y:int(curr_y/2)}] = p
+            curr_x += 2
             //advance to next column or row
             if curr_x >= width -1{
                 curr_x = 0
-                curr_y += 1
+                curr_y += 2
             }
             if curr_y >= height -1{
                 break
@@ -230,10 +229,10 @@ type Fullpixel struct{
 
 
 func main(){
-    scaleOrDeepFry("base.png")
+    //scaleOrDeepFry("base.png")
     scaleOrDeepFry("test_resizing.png")
     scaleOrDeepFry("small_test.png")
-	
+	//scaleOrDeepFry("flowers.png")
 
 }
 
