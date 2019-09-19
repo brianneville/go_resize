@@ -6,6 +6,7 @@ import (
     "image/png"
     "image/color"
     "os"
+    //"math/rand"
 )
 
 func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error) {
@@ -55,7 +56,7 @@ func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error)
 }
 
 func cubicInterpolate(line []uint32)uint32{
-    var mid uint32 = 0
+    var mid uint32 = 0 //rand.Uint32() %2
     //var right uint32 = 3*(line[1] + line[2])/4
     //var left uint32 = (line[1] + line[2])/4
       //  f(x)/2 = ax^3 + bx^2 + cx +d 
@@ -177,24 +178,27 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
     image.RegisterFormat("png", "png", png.Decode, png.DecodeConfig)
     file, err := os.Open(scaled_name)
     img, _, err := image.Decode(file)
+    topleft = image.Point{0, 0}
+    bottomright = image.Point{int(float64(width)*6/4),int(float64(height)*6/4) }
     imgNEW := image.NewRGBA(image.Rectangle{topleft, bottomright})
     if err != nil{
         fmt.Println(err)
         return
         }
     var col [4]uint32
-    for y := 0; y < height; y++{
-        for x:= 0; x <width;x++{
-            if y % 4 ==0{
-                y ++
+    reduced_y := 0
+    for y := 0; y < height*6; y++{
+        if  y % 4 == 0 {
+            reduced_y ++ 
+        }
+        reduced_x := 0
+        for x:= 0; x <width*6; x++{
+            if  x % 4 == 0 {
+                reduced_x ++ 
             }
-            if x % 4 == 0{
-                x ++
-            }else{
-                col[0], col[1],col[2], col[3]= img.At(y, x).RGBA()
-                //co := color.RGBA(uint8(col[0]), uint8(col[1]), uint8(col[2]), uint8(col[3])
-                imgNEW.Set(y, x, color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), uint8(col[3])})
-            }
+            col[0], col[1],col[2], col[3]= img.At(y, x).RGBA()
+            //co := color.RGBA(uint8(col[0]), uint8(col[1]), uint8(col[2]), uint8(col[3])
+            imgNEW.Set(y-reduced_y, x-reduced_x, color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), uint8(col[3])})
         }
     }
     scaled_name_n := fmt.Sprintf("fixed_scaled_%s", name)
@@ -235,10 +239,10 @@ type Fullpixel struct{
 
 
 func main(){
-    //scaleOrDeepFry("base.png")
+    scaleOrDeepFry("base.png")
     scaleOrDeepFry("test_resizing.png")
     scaleOrDeepFry("small_test.png")
-	//scaleOrDeepFry("flowers.png")
+	scaleOrDeepFry("flowers.png")
 
 }
 
