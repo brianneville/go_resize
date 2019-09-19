@@ -77,7 +77,7 @@ func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error)
 }
 
 func cubicInterpolate(line []uint32)uint32{
-    var mid float64 = 0.5
+    var mid float64 = 0
     //var right uint32 = 3*(line[1] + line[2])/4
     //var left uint32 = (line[1] + line[2])/4
       //  f(x)/2 = ax^3 + bx^2 + cx +d 
@@ -85,7 +85,7 @@ func cubicInterpolate(line []uint32)uint32{
     b := float64((2*line[0] - 5*line[1] + 4*line[2] - line[3])/2)
     c := float64((-line[0] + line[2])/2)
     d := line[1]
-    f_mid :=uint32(((a)*(math.Pow(mid, 3)) + (b)*(math.Pow(mid, 2)) + (c)*mid + float64(d))/2)
+    f_mid :=uint32((a)*(math.Pow(mid, 3)) + (b)*(math.Pow(mid, 2)) + (c)*mid + float64(d))
 	//fmt.Println(f_mid)
 	
     //f_right :=uint32((a*(right^3) + b*(right^2) + c^right + d)/2) 
@@ -149,11 +149,11 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
     imgRGBA := image.NewRGBA(image.Rectangle{topleft, bottomright})
 
 
-	
+
     for y := 0; y < height+4; y++{
         for x := 0; x < width+4; x++{
             col :=  color.RGBA{uint8(r[y][x]), uint8(g[y][x]), uint8(b[y][x]), uint8(a[y][x])}
-            imgRGBA.Set(2*x+2, 2*y+2, col)
+            imgRGBA.Set(2*x, 2*y-2, col)
         }
     }
 
@@ -164,25 +164,29 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
         p := pixelmap[MapKey{x:curr_x, y:curr_y}]
         if p.colors_added == 4 {
             //print the pixel on the screen
+            //fmt.Println("addded at", 2*curr_x-1, 2*curr_y-1, "with p = ", p)
             col :=  color.RGBA{uint8(p.pixel_center[0]), uint8(p.pixel_center[1]), uint8(p.pixel_center[2]), uint8(p.pixel_center[3])}
             //imgRGBA.Set(2*curr_x+5, 2*curr_y+5, col) for starting at 1 and incrementing by 2 each time
-            imgRGBA.Set(2*curr_x+1, 2*curr_y+1, col)
-            col =  color.RGBA{uint8(p.pixel_right[0]), uint8(p.pixel_right[1]), uint8(p.pixel_right[2]), uint8(p.pixel_right[3])}
+            //imgRGBA.Set(2*curr_x+3, 2*curr_y+5, col)
             imgRGBA.Set(2*curr_x+2, 2*curr_y+1, col)
+            col =  color.RGBA{uint8(p.pixel_right[0]), uint8(p.pixel_right[1]), uint8(p.pixel_right[2]), uint8(p.pixel_right[3])}
+            imgRGBA.Set(2*curr_x+1, 2*curr_y+1, col)
             col =  color.RGBA{uint8(p.pixel_left[0]), uint8(p.pixel_left[1]), uint8(p.pixel_left[2]), uint8(p.pixel_left[3])}
             imgRGBA.Set(2*curr_x, 2*curr_y+1, col)
             col =  color.RGBA{uint8(p.pixel_up[0]), uint8(p.pixel_left[1]), uint8(p.pixel_left[2]), uint8(p.pixel_left[3])}
             imgRGBA.Set(2*curr_x+1, 2*curr_y+2, col)
             col =  color.RGBA{uint8(p.pixel_down[0]), uint8(p.pixel_down[1]), uint8(p.pixel_down[2]), uint8(p.pixel_down[3])}
             imgRGBA.Set(2*curr_x+1, 2*curr_y, col)
-
-            curr_x +=1
+            
+            p.colors_added++;
+            pixelmap[MapKey{x:curr_x, y:curr_y}] = p
+            curr_x += 1
             //advance to next column or row
-            if curr_x == width -1{
-                curr_x = 1
+            if curr_x >= width -1{
+                curr_x = 0
                 curr_y += 1
             }
-            if curr_y == height -1{
+            if curr_y >= height -1{
                 break
             }
         }
@@ -228,6 +232,9 @@ type Fullpixel struct{
 func main(){
     scaleOrDeepFry("base.png")
     scaleOrDeepFry("test_resizing.png")
-    scaleOrDeepFry("test_2.png")
+    scaleOrDeepFry("small_test.png")
+	
 
 }
+
+//    "terminal.integrated.shell.windows": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
