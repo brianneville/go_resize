@@ -125,6 +125,23 @@ func paintImage(name string, ch chan map[mapKey]fullpixel, width, height int, r,
         ch <- pixelmap      //push to channel
     }
 
+    //do one last pass to correct left hand side errors
+    for p := 1; p < height*2; p+=2{
+        t0, t1, t2, t3 := imgRGBA.At(0, p-1).RGBA()
+        
+        b0, b1, b2, b3 := imgRGBA.At(0, p+1).RGBA()
+        r0, r1, r2, r3 := imgRGBA.At(1, p).RGBA()
+        c0, c1, c2, c3 := uint32(t0/3 + b0/3 + r0/3), uint32(t1/3 + b1/3 + r1/3), uint32(t2/3 + b2/3 + r2/3),uint32(t3/3 + b3/3 + r3/3)
+        
+      imgRGBA.Set(0, p, color.RGBA{uint8(c0), uint8(c1), uint8(c2), uint8(c3)})
+    }
+    
+    for p := 0; p < height*2-1; p++{
+        c0, c1, c2, c3 := imgRGBA.At(1, p).RGBA()
+        imgRGBA.Set(0, p, color.RGBA{uint8(c0), uint8(c1), uint8(c2), uint8(c3)})
+
+    }
+    
     scaled_name := fmt.Sprintf("scaled_%s", name)
     f, _ := os.Create(scaled_name)
     png.Encode(f, imgRGBA)
