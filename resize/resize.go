@@ -1,4 +1,10 @@
-package main
+package resize
+/*
+    By Brian Neville (https://github.com/tropical-bn)
+    This is an image resizing tool that I wrote - also my first project in Golang (hyyype!). 
+    The function 'Resize' takes in the filename of a png image, and will create a version of 
+    that file with the name 'scaled_<filename>.png' 
+*/
 
 import (
 	"fmt"
@@ -52,49 +58,37 @@ func readImg(fname string) (r, g, b, a [][]uint32, width, height int, err error)
     return r, g, b, a, width, height, err
 }
 
-func two_dimInterpolate(line [][]uint32)(uint32){
-    col := make([]uint32, 2, 2)
-    for i := 0; i < 2; i++{
-        col[i] = line[0][i]
-    }
-    center_point := col[0]
-
-    return center_point
-}
-
-func interpolateChannel(img [][]uint32, width, height int, id uint32, ch chan map[MapKey]Fullpixel){
+func interpolateChannel(img [][]uint32, width, height int, id uint32, ch chan map[mapKey]fullpixel){
     /*arguments:
         img is a [height] * [width] size image of a single color value (e.g. red, green, blue)
         ch is a channel which accepts a map, with a key of type MapKey and returns the fullpixel value
         id is the type of channel
     */
-    blank := Fullpixel{}
+    blank := fullpixel{}
     for y:= 0; y < height; y++ {
         for x := 0; x < width; x++{
-            line := [][]uint32{
-                {img[y+1][x+1],img[y+1][x+2] },
-                {img[y+2][x+1],img[y+2][x+2]},
-            }
-            center := two_dimInterpolate(line)
+
+            center := img[y+1][x+1]
             pixelmap := <- ch
-            p := pixelmap[MapKey{x:x, y:y}]
+            p := pixelmap[mapKey{x:x, y:y}]
             if p == blank{
-                p= Fullpixel{}
+                p= fullpixel{}
             }
             p.pixel_center[id] = center
             p.colors_added ++
-            pixelmap[MapKey{x:x, y:y}] = p
-            ch <- pixelmap
+            pixelmap[mapKey{x:x, y:y}] = p
+            ch <- pixelmap      //push into channel to be drawn or to have other colors added to pixel
         } 
     }
     
 }
 
-func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, r, g, b, a [][]uint32){
+func paintImage(name string, ch chan map[mapKey]fullpixel, width, height int, r, g, b, a [][]uint32){
     topleft := image.Point{0, 0}
     bottomright := image.Point{2*width, 2*height}
     imgRGBA := image.NewRGBA(image.Rectangle{topleft, bottomright})
 
+    //draw the original image with gaps to be interpolated
     for y := 0; y < height+4; y++{
         for x := 0; x < width+4; x++{
             col :=  color.RGBA{uint8(r[y][x]), uint8(g[y][x]), uint8(b[y][x]), uint8(a[y][x])}
@@ -104,20 +98,19 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
         }
     }
 
+    //interpolate the rest 
     curr_x := 0
     curr_y := 0
     for{
-        pixelmap := <- ch
-        p := pixelmap[MapKey{x:curr_x, y:curr_y}]
+        pixelmap := <- ch       //pull from channel
+        p := pixelmap[mapKey{x:curr_x, y:curr_y}]
         if p.colors_added == 4 {
-            //print the pixel on the screen
+            //print the pixels on the screen
             col :=  color.RGBA{uint8(p.pixel_center[0]), uint8(p.pixel_center[1]), uint8(p.pixel_center[2]), uint8(p.pixel_center[3])}
             imgRGBA.Set(2*curr_x+2, 2*curr_y+1, col)
             imgRGBA.Set(2*curr_x+1, 2*curr_y+1, col)
             imgRGBA.Set(2*curr_x+3, 2*curr_y+1, col)       
 
-            p.colors_added++;
-            pixelmap[MapKey{x:curr_x, y:curr_y}] = p
             curr_x += 1
             //advance to next column or row
             if curr_x >= width -1{
@@ -129,7 +122,7 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
             }
         }
 
-        ch <- pixelmap
+        ch <- pixelmap      //push to channel
     }
 
     scaled_name := fmt.Sprintf("scaled_%s", name)
@@ -137,40 +130,31 @@ func paintSection(name string, ch chan map[MapKey]Fullpixel, width, height int, 
     png.Encode(f, imgRGBA)
 }
 
-func resize(name string){
-    r, g, b, a, width, height, err := readImg(name)
+func Resize(name string){
+    r, g, b, a, width, height, err := readImg(name) //split original image into r, g, b, a layers
     if err != nil {
         fmt.Println(err)
         return
     }
-    ch := make(chan map[MapKey]Fullpixel, 1) 
-    ch <- map[MapKey]Fullpixel{}
+    ch := make(chan map[mapKey]fullpixel, 1)    
+    ch <- map[mapKey]fullpixel{}        
+    // ^inialise empty dictionary. this will be used to pass data between painter and interpolator
+
+    //run in goroutines!
     go interpolateChannel(r, width, height, 0, ch)
     go interpolateChannel(g, width, height, 1, ch)
     go interpolateChannel(b, width, height, 2, ch)
     go interpolateChannel(a, width, height, 3, ch)
 
-    paintSection(name, ch, width, height, r, g, b, a)
+    paintImage(name, ch, width, height, r, g, b, a)
 }
 
 
-type MapKey struct{
+type mapKey struct{
     x, y int
 }
 
-type Fullpixel struct{
+type fullpixel struct{
     pixel_center [4]uint32
     colors_added uint32
-}
-
-
-func main(){
-    /*
-    resize("base.png")
-    resize("test_resizing.png")
-    resize("small_test.png")
-	resize("flowers.png")
-    resize("rabbits.png")
-    */
-    resize("reylo.png")
 }
