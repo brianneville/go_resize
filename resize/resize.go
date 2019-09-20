@@ -7,8 +7,8 @@ package resize
 */
 
 import (
-	"fmt"
-	"image"
+    "fmt"
+    "image"
     "image/png"
     "image/color"
     "os"
