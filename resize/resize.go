@@ -3,12 +3,13 @@ package resize
     By Brian Neville (https://github.com/tropical-bn)
     This is an image resizing tool that I wrote - also my first project in Golang (hyyype!). 
     The function 'Resize' takes in the filename of a png image, and will create a version of 
-    that file with the name 'scaled_<filename>.png' 
+    that file with the name 'resized_<filename>.png' and a resolution of twice the original.
+    created on: go version go1.12.9 windows/amd64
 */
 
 import (
-	"fmt"
-	"image"
+    "fmt"
+    "image"
     "image/png"
     "image/color"
     "os"
@@ -107,10 +108,10 @@ func paintImage(name string, ch chan map[mapKey]fullpixel, width, height int, r,
         if p.colors_added == 4 {
             //print the pixels on the screen
             col :=  color.RGBA{uint8(p.pixel_center[0]), uint8(p.pixel_center[1]), uint8(p.pixel_center[2]), uint8(p.pixel_center[3])}
-            imgRGBA.Set(2*curr_x+2, 2*curr_y+1, col)
+            imgRGBA.Set(2*curr_x+2, 2*curr_y+1, col)            
             imgRGBA.Set(2*curr_x+1, 2*curr_y+1, col)
-            imgRGBA.Set(2*curr_x+3, 2*curr_y+1, col)       
-
+            imgRGBA.Set(2*curr_x+3, 2*curr_y+1, col)   
+            
             curr_x += 1
             //advance to next column or row
             if curr_x >= width -1{
@@ -125,7 +126,20 @@ func paintImage(name string, ch chan map[mapKey]fullpixel, width, height int, r,
         ch <- pixelmap      //push to channel
     }
 
-    scaled_name := fmt.Sprintf("scaled_%s", name)
+    // extend the left and bottom sides by 1 pixel to account for edges where interpolation is incomplete
+    for p := 1; p < height*2; p++{  //left edge 
+        c0, c1, c2, c3 := imgRGBA.At(1, p).RGBA()
+        imgRGBA.Set(0, p, color.RGBA{uint8(c0), uint8(c1), uint8(c2), uint8(c3)})
+    }
+    for p := 1; p < width*2; p++{   //bottom edge
+        c0, c1, c2, c3 := imgRGBA.At(p, height*2 -2).RGBA()
+        imgRGBA.Set(p, height*2 -1, color.RGBA{uint8(c0), uint8(c1), uint8(c2), uint8(c3)})
+
+    }  
+    c0, c1, c2, c3 := imgRGBA.At(0, height*2 -2).RGBA()     //bottom left corner 
+    imgRGBA.Set(0, 2*height -1, color.RGBA{uint8(c0), uint8(c1), uint8(c2), uint8(c3)})
+
+    scaled_name := fmt.Sprintf("resized_%s", name)
     f, _ := os.Create(scaled_name)
     png.Encode(f, imgRGBA)
 }

@@ -1,4 +1,7 @@
 package main
+/*
+	compile and run using: go build testing.go && testing
+*/ 
 
 import(
 	"resize"		//place the folder called 'resize' in the \src\ folder (e.g. C:\Go\src if using windows)
