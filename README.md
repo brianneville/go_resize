@@ -51,11 +51,13 @@
  
 <h4>lenna (standard test image)</h4>
  
-![img41](https://github.com/tropical-BN/go_resize/blob/master/sample_inputs_outputs/lenna/lenna.png)
+![img41](https://github.com/tropical-BN/go_resize/blob/master/sample_inputs_outputs/lenna.png)
  
-![img41](https://github.com/tropical-BN/go_resize/blob/master/sample_inputs_outputs/lenna/resized_lenna.png)
+![img41](https://github.com/tropical-BN/go_resize/blob/master/sample_inputs_outputs/resized_lenna.png)
  
  
-<h4>progression gifs</h4>
-  
-![img0](https://github.com/tropical-BN/go_resize/blob/master/sample_inputs_outputs/lenna/partial.gif)
+<h4>step by step progression</h4>
+
+After every call to imgRGBA.Set(), I encoded the image as a new .png file. I then wrote a small python script to convert them all into into a gif:
+
+![img0](https://github.com/tropical-BN/go_resize/blob/master/progression/video_small_test_2.gif)
