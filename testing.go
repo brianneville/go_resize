@@ -9,8 +9,5 @@ import(
 
 func main(){
 	//call the Resize function from the package to resize the image to twice the resolution
-	resize.Resize("test_resizing.png")		
-	resize.Resize("base.png")
-	resize.Resize("the_expanse.png")
+	resize.Resize("reylo.png")		
 }
-
