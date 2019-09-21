@@ -4,7 +4,7 @@
   This is an image resizing tool that I wrote.
   
   The function 'Resize' takes in the filename of a png image, and will create a version of 
-  that file with the name 'resized_<filename>.png' and a resolution of twice the original.
+  that file with the name 'resized_\<filename\>.png' and a resolution of twice the original.
   
   created on: go version go1.12.9 windows/amd64
   
@@ -20,7 +20,7 @@
   
  resize images with the function:
  ```
-  resize.Resize("fname.png")
+  resize.Resize("filename.png")
  ```
  Note: this function currently only works on .png files
  
